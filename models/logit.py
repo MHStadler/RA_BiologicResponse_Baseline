@@ -26,3 +26,20 @@ class Logit():
         X = sm.add_constant(X, has_constant = 'add')
         
         return self.fitted_model.predict(X, linear = True)
+    
+class MNLogit():
+    def fit(self, X, y):
+        X = sm.add_constant(X, has_constant = 'add')
+        
+        m = sm.MNLogit(y, X) 
+        self.fitted_model = m.fit(maxiter = 300, cnvrg_tol = 1e-6, disp = 0)
+        
+    def predict_proba(self, X):
+        X = sm.add_constant(X, has_constant = 'add')
+        
+        return self.fitted_model.predict(X)
+    
+    def lin_pred(self, X):
+        X = sm.add_constant(X, has_constant = 'add')
+        
+        return self.fitted_model.predict(X, linear = True)
