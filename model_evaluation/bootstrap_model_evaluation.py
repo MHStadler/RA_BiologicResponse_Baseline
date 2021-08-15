@@ -5,7 +5,7 @@ import pickle
 
 from sklearn.metrics import roc_auc_score
 
-from model_training import get_model_performance, perform_model_training
+from model_training import perform_model_training
 from utils import create_result_directories, init_logging, init_results_struct
 
 def perform_bootstrap_model_evaluation(das_type, treatment, bootstrap_idx, outcome_col = 'class_bin', M = 20, _type = 'log'):

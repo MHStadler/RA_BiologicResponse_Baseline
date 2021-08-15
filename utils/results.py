@@ -20,7 +20,7 @@ def create_result_directories(das_type, treatment, outcome_col = 'class_bin'):
 def init_results_struct(_type, M):
     if _type == 'log':
         return LogResultsStruct(M)
-    elif _typpe == 'mnlog':
+    elif _type == 'mnlog':
         return MNLogResultsStruct(M)
     elif _type == 'cont':
         return LinearResultsStruct(M)

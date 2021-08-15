@@ -3,7 +3,6 @@ import scipy.stats as stats
 
 from models import LinearModel, Logit, MNLogit, PooledLinearModelFactory
 from model_training.imputation import mice_impute_dataframe
-from model_training.performance_metrics import get_model_performance
 from utils import init_results_struct
 
 def perform_model_training(train_data_df, y, imputed_cols, M = 20, _type = 'log', get_pooled_parameters = False):
