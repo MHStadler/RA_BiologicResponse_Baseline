@@ -1,0 +1,13 @@
+*.pyc
+*/__pycache__/
+__pycache__/
+*-checkpoint.ipynb
+*-checkpoint.py
+*-checkpoint.json
+*-checkpoint.sh
+*checkpoint*
+./data/imputed
+.data.*.csv
+./CSF/logs/*
+./data/results/*
+data/*.csv
