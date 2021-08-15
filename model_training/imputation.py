@@ -12,7 +12,6 @@ multinomial_log_strat = 'multinomial logistic'
 mice_strategies = {
     'BIO': binary_log_strat,
     'SERO': binary_log_strat,
-    'SMOKE': multinomial_log_strat,
     'SEX': binary_log_strat,
     'eular_bin': multinomial_log_strat
 }
@@ -37,7 +36,7 @@ def mice_impute_dataframe(dataframe, K = 4):
     
     mice_imputer = MiceImputer(n = 1, k = K, strategy = shuffled_strategies, imp_kwgs = imputation_regression_args, return_list = True)
     imputed_train_df = pd.DataFrame(mice_imputer.fit_transform(dataframe)[0][1])
-    imputed_train_df = pd.get_dummies(imputed_train_df, drop_first = False, columns = ['SMOKE'])
+    # imputed_train_df = pd.get_dummies(imputed_train_df, drop_first = False, columns = ['SMOKE'])
     
     return imputed_train_df
 

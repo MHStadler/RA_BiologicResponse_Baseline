@@ -6,7 +6,7 @@ import pickle
 from sklearn.metrics import roc_auc_score
 
 from model_training import get_model_performance, perform_model_training
-from utils import create_result_directories, init_logging
+from utils import create_result_directories, init_logging, init_results_struct
 
 def perform_bootstrap_model_evaluation(das_type, treatment, bootstrap_idx, outcome_col = 'class_bin', M = 20, _type = 'log'):
     init_logging()
@@ -14,8 +14,10 @@ def perform_bootstrap_model_evaluation(das_type, treatment, bootstrap_idx, outco
     logging.info(f'perform_bootstrap_model_evaluation: das_type: {das_type}, treatment: {treatment}, outcome_col: {outcome_col}, boot_idx: {bootstrap_idx}, _type: {_type}')
     
     train_data_df = pd.read_csv(f'./data/das28_BIOP_{das_type}_{treatment}_outcomes.csv')
-    data_cols = ['eular_bin', 'das_tend.0', 'das_vas.0', 'das_swol.0', f'{das_type}.0', 'FIRSTBIO', 'WEIGHT', 'HEIGHT', 'DISDUR', 'SMOKE', 'AGEONSET', 'HAQ', 'SEX', 'SERO', 'CONCURRENT_DMARD']
-    imputed_cols = ['das_tend.0', 'das_vas.0', 'das_swol.0', f'{das_type}.0', 'FIRSTBIO', 'WEIGHT', 'HEIGHT', 'DISDUR', 'SMOKE_current', 'SMOKE_past', 'AGEONSET', 'HAQ', 'SEX', 'SERO', 'CONCURRENT_DMARD']
+    # Remove samples with missing outcome - only relevant for 2c outcomes
+    train_data_df = train_data_df.iloc[np.where(~pd.isnull(train_data_df[outcome_col]))[0]].reset_index(drop = True)
+    data_cols = ['eular_bin', 'das_tend.0', 'das_vas.0', 'das_swol.0', f'{das_type}.0', 'FIRSTBIO', 'WEIGHT', 'HEIGHT', 'DISDUR', 'AGEONSET', 'HAQ', 'SEX', 'SERO', 'CONCURRENT_DMARD', 'HAD_D', 'HAD_A']
+    imputed_cols = ['das_tend.0', 'das_vas.0', 'das_swol.0', f'{das_type}.0', 'FIRSTBIO', 'WEIGHT', 'HEIGHT', 'DISDUR', 'AGEONSET', 'HAQ', 'SEX', 'SERO', 'CONCURRENT_DMARD', 'HAD_D', 'HAD_A']
     
     y = train_data_df[outcome_col].to_numpy()
     
@@ -41,53 +43,18 @@ def perform_bootstrap_model_evaluation(das_type, treatment, bootstrap_idx, outco
     logging.info('Begin Training')
         
     boot_result_struct, boot_pooled_lin_model, boot_imputed_train_dfs = perform_model_training(boot_train_data_df, boot_y, imputed_cols, _type = _type)
-        
-    raw_acc_measure_values = np.zeros(M)
-    raw_auc_values = np.zeros(M)
-    raw_citls = []
-    raw_cal_slopes = []
-    raw_prop_trues = []
-    raw_prop_preds = []
+    results = init_results_struct(_type, M)
     
     for m in range(M):
         imputed_train_df = imputed_train_dfs[m]
             
         X = imputed_train_df[imputed_cols].to_numpy()
         
-        acc_measure, auc, citl, cal_slope, prop_true, prop_pred = get_model_performance(boot_pooled_lin_model, X, y, _type = _type)
-            
-        raw_acc_measure_values[m] = acc_measure
-        raw_auc_values[m] = auc
-        raw_citls.append(citl)
-        raw_cal_slopes.append(cal_slope)
-        raw_prop_trues.append(prop_true)
-        raw_prop_preds.append(prop_pred)
-       
-    raw_citls = np.array(raw_citls)
-    raw_cal_slopes = np.array(raw_cal_slopes)
+        results.add_result(m, boot_pooled_lin_model, X, y)
+
+    result_struct = results.to_results_struct()
     
-    raw_acc_measure = np.median(raw_acc_measure_values)
-    raw_auc = np.median(raw_auc_values)
-    raw_citl = np.median(raw_citls, axis = 0)
-    raw_cal_slope = np.median(raw_cal_slopes, axis = 0)
-        
-    result_struct = {
-        'boot_apparent_performance': boot_result_struct,
-        'raw_acc_measure_values': raw_acc_measure_values,
-        'raw_acc_measure': raw_acc_measure,
-        'acc_measure_optimism': boot_result_struct['acc_measure'] - raw_acc_measure,
-        'raw_auc_values': raw_auc_values,
-        'raw_auc': raw_auc,
-        'auc_optimism': boot_result_struct['auc'] - raw_auc,
-        'raw_citls': raw_citls,
-        'raw_citl': raw_citl,
-        'citl_optimism': boot_result_struct['citl'] - raw_citl,
-        'raw_cal_slopes': raw_cal_slopes,
-        'raw_cal_slope': raw_cal_slope,
-        'cal_slope_optimism': boot_result_struct['cal_slope'] - raw_cal_slope,
-        'raw_prop_trues': raw_prop_trues,
-        'raw_prop_preds': raw_prop_preds,
-    }
+    result_struct['boot_apparent_performance'] = boot_result_struct
     
     logging.info(result_struct)
     
@@ -106,11 +73,12 @@ def _is_valid_bootstrap(boot_train_data_df, y, _type):
             logging.info('Invalid values for multinomial outcome y')
             is_valid_bootstrap = False
     
-    n_smoke_cats = len(np.unique(boot_train_data_df['SMOKE']))
-    if n_smoke_cats != 3:
-        logging.info(f'Invalid values for mn category SMOKE')
+    #not_null_idx = np.where(~pd.isnull(boot_train_data_df['SMOKE']))
+    #n_smoke_cats = len(np.unique(boot_train_data_df.iloc[not_null_idx]['SMOKE']))
+    #if n_smoke_cats != 3:
+        #logging.info(f'Invalid values for mn category SMOKE')
         
-        is_valid_bootstrap = False
+        #is_valid_bootstrap = False
     else:
         for bin_cat in ['FIRSTBIO', 'SEX', 'SERO', 'CONCURRENT_DMARD']:
             not_null_idx = np.where(~pd.isnull(boot_train_data_df[bin_cat]))

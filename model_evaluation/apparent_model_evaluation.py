@@ -1,5 +1,6 @@
 import json
 import logging
+import numpy as np
 import pandas as pd
 import pickle
 
@@ -14,9 +15,11 @@ def perform_apparent_model_evaluation(das_type, treatment, outcome_col = 'class_
     create_result_directories(das_type, treatment, outcome_col = outcome_col)
     
     train_data_df = pd.read_csv(f'./data/das28_BIOP_{das_type}_{treatment}_outcomes.csv')
+    # Remove samples with missing outcome - only relevant for 2c outcomes
+    train_data_df = train_data_df.iloc[np.where(~pd.isnull(train_data_df[outcome_col]))[0]].reset_index(drop = True)
     
-    data_cols = ['eular_bin', 'das_tend.0', 'das_vas.0', 'das_swol.0', f'{das_type}.0', 'FIRSTBIO', 'WEIGHT', 'HEIGHT', 'DISDUR', 'SMOKE', 'AGEONSET', 'HAQ', 'SEX', 'SERO', 'CONCURRENT_DMARD']
-    imputed_cols = ['das_tend.0', 'das_vas.0', 'das_swol.0', f'{das_type}.0', 'FIRSTBIO', 'WEIGHT', 'HEIGHT', 'DISDUR', 'SMOKE_current', 'SMOKE_past', 'AGEONSET', 'HAQ', 'SEX', 'SERO', 'CONCURRENT_DMARD']
+    data_cols = ['eular_bin', 'das_tend.0', 'das_vas.0', 'das_swol.0', f'{das_type}.0', 'FIRSTBIO', 'WEIGHT', 'HEIGHT', 'DISDUR', 'AGEONSET', 'HAQ', 'SEX', 'SERO', 'CONCURRENT_DMARD', 'HAD_D', 'HAD_A']
+    imputed_cols = ['das_tend.0', 'das_vas.0', 'das_swol.0', f'{das_type}.0', 'FIRSTBIO', 'WEIGHT', 'HEIGHT', 'DISDUR', 'AGEONSET', 'HAQ', 'SEX', 'SERO', 'CONCURRENT_DMARD', 'HAD_D', 'HAD_A']
 
     y = train_data_df[outcome_col].to_numpy()
     

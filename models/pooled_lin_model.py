@@ -12,6 +12,8 @@ class PooledLinearModelFactory():
         
         if _type == 'mnlog':
             return PooledLinearMNModel(beta0, betas)
+        elif _type == 'cont':
+            return PooledLinearContModel(beta0, betas)
         else:
             return PooledLinearModel(beta0, betas)
         
@@ -19,6 +21,8 @@ class PooledLinearModelFactory():
     def init_from_linear_models(cls, linear_models, _type = 'log'):
         if _type == 'mnlog':
             return PooledLinearMNModel.init_from_linear_models(linear_models)
+        if _type == 'cont':
+            return PooledLinearContModel.init_from_linear_models(linear_models)
         else:
             return PooledLinearModel.init_from_linear_models(linear_models)
 
@@ -57,6 +61,34 @@ class PooledLinearModel():
     
     def _sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
+    
+class PooledLinearContModel():
+    def __init__(self, beta0, betas):
+        self.type = 'cont'
+        self.beta0 = beta0
+        self.betas = betas
+        
+    @classmethod 
+    def init_from_linear_models(cls, linear_models):
+        N = len(linear_models)
+        
+        beta0 = linear_models[0].fitted_model.params[0]
+        betas = linear_models[0].fitted_model.params[1:]
+        
+        for n in range(1, N):
+            beta0 += linear_models[n].fitted_model.params[0]
+            betas += linear_models[n].fitted_model.params[1:]
+            
+        beta0 /= N
+        betas /= N
+            
+        return cls(beta0, betas)
+    
+    def predict(self, X):
+        return self.beta0 + np.dot(X, self.betas.T)
+    
+    def to_file(self, file_path):
+        write_model_to_file(self, file_path)
     
 # For simplicity, only supports 3 categories for now, asssuming category 0 is the base category
 class PooledLinearMNModel():

@@ -1,9 +1,10 @@
 import numpy as np
 import scipy.stats as stats
 
-from models import Logit, MNLogit, PooledLinearModelFactory
+from models import LinearModel, Logit, MNLogit, PooledLinearModelFactory
 from model_training.imputation import mice_impute_dataframe
 from model_training.performance_metrics import get_model_performance
+from utils import init_results_struct
 
 def perform_model_training(train_data_df, y, imputed_cols, M = 20, _type = 'log', get_pooled_parameters = False):
     imputed_train_dfs = []
@@ -16,6 +17,8 @@ def perform_model_training(train_data_df, y, imputed_cols, M = 20, _type = 'log'
         
         if _type == 'mnlog':
             estimator = MNLogit()
+        elif _type == 'cont':
+            estimator = LinearModel()
         else:
             estimator = Logit()
             
@@ -26,48 +29,16 @@ def perform_model_training(train_data_df, y, imputed_cols, M = 20, _type = 'log'
         
     pooled_lin_model = PooledLinearModelFactory.init_from_linear_models(fitted_models, _type = _type)
     
-    acc_measure_values = np.zeros(M)
-    auc_values = np.zeros(M)
-    citls = []
-    cal_slopes = []
-    prop_trues = []
-    prop_preds = []
+    results = init_results_struct(_type, M)
     
     for m in range(M):
         imputed_train_df = imputed_train_dfs[m]
         
         X = imputed_train_df[imputed_cols].to_numpy()
         
-        acc_measure, auc, citl, cal_slope, prop_true, prop_pred = get_model_performance(pooled_lin_model, X, y, _type = _type)
-        
-        acc_measure_values[m] = acc_measure
-        auc_values[m] = auc
-        
-        citls.append(citl)
-        cal_slopes.append(cal_slope)
-        
-        prop_trues.append(prop_true)
-        prop_preds.append(prop_pred)
-       
-    citls = np.array(citls)
-    cal_slopes = np.array(cal_slopes)
+        results.add_result(m, pooled_lin_model, X, y)
     
-    result_struct = {
-        'acc_measure_values': acc_measure_values,
-        'acc_measure': np.median(acc_measure_values),
-        'acc_measure_iqr': stats.iqr(acc_measure_values),
-        'auc_values': auc_values,
-        'auc': np.median(auc_values),
-        'auc_iqr': stats.iqr(auc_values),
-        'citls': citls,
-        'citl': np.median(citls, axis = 0),
-        'citl_iqr': stats.iqr(citls, axis = 0),
-        'cal_slopes': cal_slopes,
-        'cal_slope': np.median(cal_slopes, axis = 0),
-        'cal_slope_iqr': stats.iqr(cal_slopes, axis = 0),
-        'prop_trues': prop_trues,
-        'prop_preds': prop_preds
-    }
+    result_struct = results.to_results_struct()
     
     if get_pooled_parameters:
         pooled_model_parameters = _pool_model_parameters(fitted_models, train_data_df.shape[0], imputed_cols)
